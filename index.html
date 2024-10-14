@@ -12,14 +12,70 @@
             height: 100%;
             margin: 0;
             padding: 0;
+            display: flex;
+            flex-direction: column;
         }
 
-        #map {
+        .container {
+            display: flex;
+            flex-direction: column;
             height: 100%;
-            width: 100%;
-            position: absolute;
-            /* Ensure it fills the container */
         }
+
+        .input-container {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            margin: 10px auto;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+
+        /* Style each input and button to scale properly */
+        .input-container input[type="text"],
+        .input-container button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            font-size: 16px;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+
+        .input-container button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .input-container button:hover {
+            background-color: #0056b3;
+        }
+
+        /* Make the map fill remaining space */
+        #map {
+            flex-grow: 1;
+            /* Allows the map to take up the remaining space */
+        }
+
+        /* Responsive adjustments for small screens */
+        @media (max-width: 600px) {
+            .input-container {
+                display: flex;
+                flex-direction: column;
+                max-width: 90%;
+                padding: 5px;
+            }
+
+            .input-container input[type="text"],
+            .input-container button {
+                padding: 8px;
+                font-size: 14px;
+            }
+        }
+
 
         .hole-number {
             background-color: yellow;
@@ -35,77 +91,20 @@
             color: black;
             /* Ensure text is dark */
         }
-
-        input[type="text"],
-        button {
-            width: calc(100% - 20px);
-            /* Full width minus padding */
-            max-width: 400px;
-            /* Optional: Set a max-width for larger screens */
-            padding: 10px;
-            /* Padding for better touchability */
-            margin: 10px auto;
-            /* Centering and spacing */
-            font-size: 16px;
-            /* Ensuring text is legible */
-            border: 1px solid #ccc;
-            /* Basic border for text box */
-            border-radius: 5px;
-            /* Rounded corners */
-        }
-
-        button {
-            background-color: #007bff;
-            /* Bootstrap primary color or your choice */
-            color: white;
-            /* Text color */
-            border: none;
-            /* No border */
-            cursor: pointer;
-            /* Change cursor on hover */
-        }
-
-        button:hover {
-            background-color: #0056b3;
-            /* Darker shade on hover */
-        }
-
-        /* Increase size of zoom control buttons */
-        .leaflet-control-zoom {
-            font-size: 1.5em;
-            /* Make the zoom buttons larger */
-        }
-
-        .leaflet-control-zoom a {
-            width: 40px;
-            /* Wider buttons */
-            height: 40px;
-            /* Taller buttons */
-            line-height: 40px;
-            /* Center the text vertically */
-        }
-
-        /* Increase size of the attribution control */
-        .leaflet-control-attribution {
-            font-size: 1.5em;
-            /* Larger attribution text */
-        }
-
-        /* Optional: Make the map container slightly larger for a better experience */
-        #map {
-            margin-top: 20px;
-            /* Add margin if needed */
-        }
     </style>
 </head>
 
 <body>
-    <div id="controls">
-        <input type="text" id="courseName" placeholder="Enter golf course name (or leave empty)" value="Coyote Creek">
-        <input type="text" id="location" placeholder="Enter city, zipcode, or use map view" value="Redmond">
-        <button onclick="findGolfCourse()">Go</button>
+    <div class="container">
+        <div id="controls" class="input-container">
+            <input type="text" id="courseName" placeholder="Enter golf course name (or leave empty)"
+                value="Coyote Creek">
+            <input type="text" id="location" placeholder="Enter city, zipcode, or use map view" value="Redmond">
+            <button onclick="findGolfCourse()">Go</button>
+        </div>
+        <div id="map"></div>
     </div>
-    <div id="map"></div>
+
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
