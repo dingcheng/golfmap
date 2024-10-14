@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Golf Course Mapper</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <style>
+        #map {
+            height: 500px;
+        }
+
+        #controls {
+            margin: 10px;
+        }
+
+        .hole-number {
+            background-color: yellow; /* Change background color for visibility */
+            border: 2px solid green;  /* Make the border more pronounced */
+            border-radius: 5px;
+            padding: 5px;             /* Increase padding */
+            text-align: center;
+            font-size: 14px;         /* Adjust font size */
+            color: black;            /* Ensure text is dark */
+        }
+    </style>
+</head>
+
+<body>
+    <div id="controls">
+        <input type="text" id="courseName" placeholder="Enter golf course name" value="Coyote Creek">
+        <input type="text" id="location" placeholder="Enter city, zipcode, or use map view" value="Redmond">
+        <button onclick="findGolfCourse()">Go</button>
+    </div>
+    <div id="map"></div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([47.6104, -122.2007], 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+
+        // Initialize geocoder for location input
+        const geocoder = L.Control.Geocoder.nominatim();
+
+        function findGolfCourse() {
+            const courseName = document.getElementById("courseName").value;
+            const location = document.getElementById("location").value;
+
+            // Use geocoding to convert location input into bounding box
+            geocoder.geocode(location, (results) => {
+                if (results.length > 0) {
+                    const bbox = results[0].bbox;
+                    const south = bbox.getSouthWest().lat;
+                    const west = bbox.getSouthWest().lng;
+                    const north = bbox.getNorthEast().lat;
+                    const east = bbox.getNorthEast().lng;
+
+                    // Construct Overpass API query
+                    
+                    const overpassQuery = `
+                        [out:json];
+                        nwr["golf:course:name"="${courseName}"](${south},${west},${north},${east});
+                        // nwr["golf"="hole"](${south},${west},${north},${east});
+                        // way(r)["golf"="fairway"];
+                        // way(r)["golf"="green"];
+                        out body;
+                        >;
+                        out skel qt;
+                    `;
+
+                    // Fetch Overpass API results
+                    fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`)
+                        .then(response => response.json())
+                        .then(data => displayGolfCourse(data, bbox))
+                        .catch(error => console.error("Overpass API error:", error));
+                } else {
+                    alert("Location not found.");
+                }
+            });
+        }
+
+        function displayGolfCourse(data, bounds) {
+            // Clear previous layers
+            map.eachLayer((layer) => {
+                if (!!layer.toGeoJSON) map.removeLayer(layer);
+            });
+
+            // Create a node lookup table from all nodes in the response
+            const nodeLookup = {};
+            data.elements.forEach((element) => {
+                if (element.type === "node") {
+                    nodeLookup[element.id] = [element.lon, element.lat];
+                }
+            });
+
+            // Display fetched data on the map
+            const fairways = L.geoJSON(null, { style: { color: "green" } }).addTo(map);
+            const greens = L.geoJSON(null, { style: { color: "darkgreen", fillOpacity: 0.4 } }).addTo(map);
+
+            // Array to hold all coordinates for bounding box calculation
+            const allCoordinates = [];
+
+            data.elements.forEach((element) => {
+                if (element.type === "node") return;
+                const geojson = toGeoJSON(element, nodeLookup);
+                if (element.tags["golf"] === "hole") {
+                    fairways.addData(geojson);
+                    // Add hole number overlay
+                    const holeNumber = element.tags["ref"]; // Adjust based on the correct tag
+                    if (holeNumber) {
+                        const midpoint = getMidpoint(geojson.geometry.coordinates);
+                        const marker = L.marker(midpoint, {
+                            icon: L.divIcon({
+                                className: 'hole-number',
+                                html: holeNumber,
+                                iconSize: [15, 15]
+                            })
+                        }).addTo(map);
+                    }
+                } else if (element.tags["golf"] === "green") {
+                    greens.addData(geojson);
+                }
+
+                // Collect all coordinates for bounding box calculation
+                geojson.geometry.coordinates.forEach(coord => {
+                    allCoordinates.push(coord);
+                });
+            });
+
+            // Calculate bounding box from all collected coordinates
+            if (allCoordinates.length > 0) {
+                const bounds = L.latLngBounds(allCoordinates.map(coord => [coord[1], coord[0]]));
+                map.fitBounds(bounds);
+            } else {
+                alert("No ways found for the specified course.");
+            }
+        }
+
+        function toGeoJSON(element, nodeLookup) {
+            if (element.type === "way") {
+                const coordinates = element.nodes
+                    .map(nodeId => nodeLookup[nodeId]) // Map node IDs to [lon, lat] pairs
+                    .filter(coord => coord); // Filter out any undefined entries
+
+                // Only create a geoJSON object if we have valid coordinates
+                if (coordinates.length > 0) {
+                    return {
+                        type: "Feature",
+                        geometry: {
+                            type: "LineString",
+                            coordinates: coordinates
+                        },
+                        properties: element.tags
+                    };
+                }
+            }
+            return null; // Return null for unsupported types
+        }
+
+        // Helper function to get the midpoint of a line
+        function getMidpoint(coordinates) {
+            // const midIndex = Math.floor(coordinates.length / 2);
+            return [coordinates[coordinates.length - 1][1], coordinates[coordinates.length - 1][0]]; // [lng, lat]
+        }
+
+    </script>
+</body>
+
+</html>
