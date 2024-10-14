@@ -164,7 +164,7 @@
                     fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`)
                         .then(response => response.json())
                         .then(data => displayGolfCourse(data, bbox))
-                        .then(map.locate({setView: true, maxZoom: 16}))
+                        .then(map.locate())
                         .catch(error => console.error("Overpass API error:", error));
                 } else {
                     alert("Location not found.");
