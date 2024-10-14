@@ -22,13 +22,79 @@
         }
 
         .hole-number {
-            background-color: yellow; /* Change background color for visibility */
-            border: 2px solid green;  /* Make the border more pronounced */
+            background-color: yellow;
+            /* Change background color for visibility */
+            border: 2px solid green;
+            /* Make the border more pronounced */
             border-radius: 5px;
-            padding: 5px;             /* Increase padding */
+            padding: 5px;
+            /* Increase padding */
             text-align: center;
-            font-size: 14px;         /* Adjust font size */
-            color: black;            /* Ensure text is dark */
+            font-size: 14px;
+            /* Adjust font size */
+            color: black;
+            /* Ensure text is dark */
+        }
+
+        input[type="text"],
+        button {
+            width: calc(100% - 20px);
+            /* Full width minus padding */
+            max-width: 400px;
+            /* Optional: Set a max-width for larger screens */
+            padding: 10px;
+            /* Padding for better touchability */
+            margin: 10px auto;
+            /* Centering and spacing */
+            font-size: 16px;
+            /* Ensuring text is legible */
+            border: 1px solid #ccc;
+            /* Basic border for text box */
+            border-radius: 5px;
+            /* Rounded corners */
+        }
+
+        button {
+            background-color: #007bff;
+            /* Bootstrap primary color or your choice */
+            color: white;
+            /* Text color */
+            border: none;
+            /* No border */
+            cursor: pointer;
+            /* Change cursor on hover */
+        }
+
+        button:hover {
+            background-color: #0056b3;
+            /* Darker shade on hover */
+        }
+
+        /* Increase size of zoom control buttons */
+        .leaflet-control-zoom {
+            font-size: 1.5em;
+            /* Make the zoom buttons larger */
+        }
+
+        .leaflet-control-zoom a {
+            width: 40px;
+            /* Wider buttons */
+            height: 40px;
+            /* Taller buttons */
+            line-height: 40px;
+            /* Center the text vertically */
+        }
+
+        /* Increase size of the attribution control */
+        .leaflet-control-attribution {
+            font-size: 1.2em;
+            /* Larger attribution text */
+        }
+
+        /* Optional: Make the map container slightly larger for a better experience */
+        #map {
+            margin-top: 20px;
+            /* Add margin if needed */
         }
     </style>
 </head>
