@@ -87,7 +87,7 @@
 
         /* Increase size of the attribution control */
         .leaflet-control-attribution {
-            font-size: 1.2em;
+            font-size: 1.5em;
             /* Larger attribution text */
         }
 
@@ -101,7 +101,7 @@
 
 <body>
     <div id="controls">
-        <input type="text" id="courseName" placeholder="Enter golf course name" value="Coyote Creek">
+        <input type="text" id="courseName" placeholder="Enter golf course name (or leave empty)" value="Coyote Creek">
         <input type="text" id="location" placeholder="Enter city, zipcode, or use map view" value="Redmond">
         <button onclick="findGolfCourse()">Go</button>
     </div>
@@ -131,8 +131,20 @@
                     const east = bbox.getNorthEast().lng;
 
                     // Construct Overpass API query
-                    
-                    const overpassQuery = `
+
+                    var overpassQuery = '';
+                    if (courseName.length === 0) {
+                        overpassQuery = `
+                        [out:json];
+                        nwr["golf"="hole"](${south},${west},${north},${east});
+                        // way(r)["golf"="fairway"];
+                        // way(r)["golf"="green"];
+                        out body;
+                        >;
+                        out skel qt;
+                    `;
+                    } else {
+                        overpassQuery = `
                         [out:json];
                         nwr["golf:course:name"="${courseName}"](${south},${west},${north},${east});
                         // nwr["golf"="hole"](${south},${west},${north},${east});
@@ -142,6 +154,7 @@
                         >;
                         out skel qt;
                     `;
+                    }
 
                     // Fetch Overpass API results
                     fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`)
