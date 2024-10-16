@@ -98,12 +98,12 @@
 
 <body>
     <div class="container">
-        <div id="controls" class="input-container">
+        <form id="controls" class="input-container" onsubmit="findGolfCourse(); return false;">
             <input type="text" id="courseName" placeholder="Enter golf course name (or leave empty)"
                 value="China Creek">
             <input type="text" id="location" placeholder="Enter city, zipcode, or use map view" value="98006">
-            <button onclick="findGolfCourse()">Go</button>
-        </div>
+            <button type="submit">Go</button>
+        </form>
         <div id="map"></div>
     </div>
 
@@ -122,24 +122,42 @@
         // Initialize geocoder for location input
         const geocoder = L.Control.Geocoder.nominatim();
 
-        function findGolfCourse() {
+        async function findGolfCourse() {
             const courseName = document.getElementById("courseName").value;
             const location = document.getElementById("location").value;
+            // Clear previous layers
+            map.eachLayer((layer) => {
+                if (!!layer.toGeoJSON) map.removeLayer(layer);
+            });
 
-            // Use geocoding to convert location input into bounding box
-            geocoder.geocode(location, (results) => {
-                if (results.length > 0) {
-                    const bbox = results[0].bbox;
-                    const south = bbox.getSouthWest().lat;
-                    const west = bbox.getSouthWest().lng;
-                    const north = bbox.getNorthEast().lat;
-                    const east = bbox.getNorthEast().lng;
+            map.locate();
+            if (location) {
+                // Use geocoding to convert location input into bounding box
+                await geocoder.geocode(location, (results) => queryForGolfCourses(results, courseName));
+            }
+        }
 
-                    // Construct Overpass API query
+        function queryForGolfCourses(results, courseName) {
+            if (results.length > 0) {
+                const result = results[0];
+                const bbox = result.bbox;
+                const south = bbox.getSouthWest().lat;
+                const west = bbox.getSouthWest().lng;
+                const north = bbox.getNorthEast().lat;
+                const east = bbox.getNorthEast().lng;
 
-                    var overpassQuery = '';
-                    if (courseName.length === 0) {
-                        overpassQuery = `
+                L.rectangle(bbox, {
+                    color: "#ff7800",   // Border color
+                    weight: 1,          // Border weight
+                    fillOpacity: 0      // No fill color
+                }).addTo(map);
+
+
+                // Construct Overpass API query
+
+                var overpassQuery = '';
+                if (courseName.length === 0) {
+                    overpassQuery = `
                         [out:json];
                         nwr["golf"="hole"](${south},${west},${north},${east});
                         // way(r)["golf"="fairway"];
@@ -148,35 +166,53 @@
                         >;
                         out skel qt;
                     `;
-                    } else {
-                        overpassQuery = `
+                } else {
+                    overpassQuery = `
                         [out:json];
                         nwr["golf:course:name"="${courseName}"](${south},${west},${north},${east});
-                        // nwr["golf"="hole"](${south},${west},${north},${east});
-                        // way(r)["golf"="fairway"];
-                        // way(r)["golf"="green"];
                         out body;
                         >;
                         out skel qt;
                     `;
-                    }
-
-                    // Fetch Overpass API results
-                    fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`)
-                        .then(response => response.json())
-                        .then(data => displayGolfCourse(data, bbox))
-                        .catch(error => console.error("Overpass API error:", error));
-                } else {
-                    alert("Location not found.");
                 }
+
+                // Fetch Overpass API results
+                fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`)
+                    .then(response => response.json())
+                    .then(data => displayGolfCourse(data, bbox))
+                    .catch(error => console.error("Overpass API error:", error));
+            } else {
+                alert("Location not found.");
+            }
+        }
+
+        function convertLocationToObjectWithBBox(position, bboxSize = 0.05) {
+
+            const lat = position.latitude;
+            const lng = position.longitude;
+
+            const locationWithBBox = {
+                bbox:
+                    L.latLngBounds(
+                        [lat - bboxSize, lng - bboxSize],
+                        [lat + bboxSize, lng + bboxSize]
+                    )
+            };
+
+            return locationWithBBox;
+        }
+
+        function getCurrentLocation() {
+            return new Promise((resolve, reject) => {
+                navigator.geolocation.getCurrentPosition(
+                    position => resolve(position),
+                    error => reject(error)
+                );
             });
         }
 
         function displayGolfCourse(data, bounds) {
-            // Clear previous layers
-            map.eachLayer((layer) => {
-                if (!!layer.toGeoJSON) map.removeLayer(layer);
-            });
+
 
             // Create a node lookup table from all nodes in the response
             const nodeLookup = {};
@@ -224,7 +260,7 @@
             if (allCoordinates.length > 0) {
                 const bounds = L.latLngBounds(allCoordinates.map(coord => [coord[1], coord[0]]));
                 map.fitBounds(bounds);
-                map.locate();
+                // map.locate();
             } else {
                 alert("No ways found for the specified course.");
             }
@@ -258,6 +294,12 @@
         }
 
         function onLocationFound(e) {
+            // console.log("location found!", e);
+            const location = document.getElementById("location").value;
+            const courseName = document.getElementById("courseName").value;
+            if (!location) {
+                queryForGolfCourses([convertLocationToObjectWithBBox(e, 0.1)], courseName);
+            }
             var radius = e.accuracy;
 
             L.marker(e.latlng).addTo(map)
