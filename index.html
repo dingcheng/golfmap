@@ -209,7 +209,6 @@
             const allCoordinates = [];
 
             data.elements.forEach((element) => {
-                console.log(element.type)
                 if (element.type === "node") return;
                 const geojson = toGeoJSON(element, nodeLookup);
                 if (element.tags["golf"] === "hole") {
