@@ -139,8 +139,7 @@
 
         function queryForGolfCourses(results, courseName) {
             if (results.length > 0) {
-                const result = results[0];
-                const bbox = result.bbox;
+                const bbox = results[0].bbox;
                 const south = bbox.getSouthWest().lat;
                 const west = bbox.getSouthWest().lng;
                 const north = bbox.getNorthEast().lat;
@@ -152,29 +151,20 @@
                     fillOpacity: 0      // No fill color
                 }).addTo(map);
 
-
                 // Construct Overpass API query
+                const queryString = courseName ?
+                    `nwr["golf:course:name"="${courseName}"](${south},${west},${north},${east});` :
+                    `nwr["golf"="hole"](${south},${west},${north},${east});`;
 
-                var overpassQuery = '';
-                if (courseName.length === 0) {
-                    overpassQuery = `
+                const overpassQuery = `
                         [out:json];
-                        nwr["golf"="hole"](${south},${west},${north},${east});
+                        ${queryString}
                         // way(r)["golf"="fairway"];
                         // way(r)["golf"="green"];
                         out body;
                         >;
                         out skel qt;
                     `;
-                } else {
-                    overpassQuery = `
-                        [out:json];
-                        nwr["golf:course:name"="${courseName}"](${south},${west},${north},${east});
-                        out body;
-                        >;
-                        out skel qt;
-                    `;
-                }
 
                 // Fetch Overpass API results
                 fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(overpassQuery)}`)
@@ -202,18 +192,7 @@
             return locationWithBBox;
         }
 
-        function getCurrentLocation() {
-            return new Promise((resolve, reject) => {
-                navigator.geolocation.getCurrentPosition(
-                    position => resolve(position),
-                    error => reject(error)
-                );
-            });
-        }
-
         function displayGolfCourse(data, bounds) {
-
-
             // Create a node lookup table from all nodes in the response
             const nodeLookup = {};
             data.elements.forEach((element) => {
