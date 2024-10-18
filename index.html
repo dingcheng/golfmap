@@ -209,12 +209,14 @@
             const allCoordinates = [];
 
             data.elements.forEach((element) => {
+                console.log(element.type)
                 if (element.type === "node") return;
                 const geojson = toGeoJSON(element, nodeLookup);
                 if (element.tags["golf"] === "hole") {
                     fairways.addData(geojson);
                     // Add hole number overlay
                     const holeNumber = element.tags["ref"]; // Adjust based on the correct tag
+                    const par = element.tags["par"]
                     if (holeNumber) {
                         const midpoint = getMidpoint(geojson.geometry.coordinates);
                         const marker = L.marker(midpoint, {
@@ -223,7 +225,7 @@
                                 html: holeNumber,
                                 iconSize: [15, 15]
                             })
-                        }).addTo(map);
+                        }).bindPopup("Par " + par).addTo(map);
                     }
                 } else if (element.tags["golf"] === "green") {
                     greens.addData(geojson);
