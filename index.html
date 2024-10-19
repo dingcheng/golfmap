@@ -172,7 +172,9 @@
         function startTracking() {
             if (navigator.geolocation) {
                 watchId = navigator.geolocation.watchPosition(updatePosition, handleError, {
-                    enableHighAccuracy: true
+                    enableHighAccuracy: true,
+                    maximumAge: 3000,
+                    timeout: 5000
                 });
             } else {
                 alert("Geolocation is not supported by this browser.");
@@ -203,6 +205,10 @@
             map.setView([latitude, longitude]); // Center the map on the user's location
         }
 
+        function handleError(error) {
+            console.error(`Error occurred: ${error.message}`);
+        }
+
         function calculateMarkerDistanceInYards(marker1, marker2) {
             // Get coordinates of the two markers
             let latlng1 = marker1.getLatLng();
@@ -230,10 +236,6 @@
                 }).addTo(yardageLayer);
                 userMarker.openPopup();
             }
-        }
-
-        function handleError(error) {
-            console.error(`Error occurred: ${error.message}`);
         }
 
         document.getElementById("trackMe").addEventListener("change", function () {
