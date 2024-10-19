@@ -241,6 +241,7 @@
             const location = document.getElementById("location").value;
             golfCourseLayer.clearLayers();
             yardageLayer.clearLayers();
+            focusGreenMarker = null;
 
             if (location) {
                 // Use geocoding to convert location input into bounding box
