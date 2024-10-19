@@ -110,6 +110,10 @@
             color: black;
             /* Ensure text is dark */
         }
+
+        .hole-number-current {
+            background-color: aquamarine;
+        }
     </style>
 </head>
 
@@ -147,9 +151,11 @@
         // Create separate layer groups
         const userLayer = L.layerGroup().addTo(map); // For user location markers
         const golfCourseLayer = L.layerGroup().addTo(map); // For golf course markers
+        const yardageLayer = L.layerGroup().addTo(map); // For lines between current location and green marker
 
         let userMarker; // Store the user marker
         let watchId;
+        let focusGreenMarker;
 
         //--- watch/track user location component
 
@@ -168,6 +174,7 @@
                 navigator.geolocation.clearWatch(watchId);
                 userLayer.clearLayers();
                 userMarker = null;
+                yardageLayer.clearLayers();
             }
         }
 
@@ -181,8 +188,38 @@
                     .bindPopup("You are here").openPopup();
             } else {
                 userMarker.setLatLng([latitude, longitude]);
+                drawYardage();
             }
             map.setView([latitude, longitude]); // Center the map on the user's location
+        }
+
+        function calculateDistanceInYards(marker1, marker2) {
+            // Get coordinates of the two markers
+            let latlng1 = marker1.getLatLng();
+            let latlng2 = marker2.getLatLng();
+
+            // Calculate distance in meters
+            let distanceInMeters = latlng1.distanceTo(latlng2);
+
+            // Convert meters to yards
+            let distanceInYards = distanceInMeters * 1.09361;
+
+            // Return the distance in yards
+            return distanceInYards;
+        }
+
+        function drawYardage() {
+            if (focusGreenMarker && userMarker) {
+                const yardage = calculateDistanceInYards(focusGreenMarker, userMarker);
+                userMarker.getPopup().setContent(yardage + " yards");
+                yardageLayer.clearLayers();
+                L.polyline([userMarker.getLatLng(), focusGreenMarker.getLatLng()], {
+                    color: 'red',   // Color of the line
+                    weight: 1,      // Thickness of the line
+                    opacity: 0.7,   // Transparency of the line
+                }).addTo(yardageLayer);
+                userMarker.openPopup();
+            }
         }
 
         function handleError(error) {
@@ -203,11 +240,13 @@
             const courseName = document.getElementById("courseName").value;
             const location = document.getElementById("location").value;
             golfCourseLayer.clearLayers();
+            yardageLayer.clearLayers();
 
-            map.locate();
             if (location) {
                 // Use geocoding to convert location input into bounding box
                 await geocoder.geocode(location, (results) => queryForGolfCourses(results, courseName));
+            } else {
+                map.locate();
             }
         }
 
@@ -299,6 +338,20 @@
                                 iconSize: [15, 15]
                             })
                         }).bindPopup("Par " + par).addTo(golfCourseLayer);
+                        marker.on('click', () => {
+                            if (focusGreenMarker) {
+                                // reset previous marker
+                                let currentIcon = focusGreenMarker.getIcon();
+                                currentIcon.options.className = 'hole-number';
+                                focusGreenMarker.setIcon(currentIcon);
+                            }
+                            focusGreenMarker = marker;
+                            // reset previous marker
+                            let currentIcon = focusGreenMarker.getIcon();
+                            currentIcon.options.className = 'hole-number hole-number-current';
+                            focusGreenMarker.setIcon(currentIcon);
+                            drawYardage();
+                        });
                     }
                 } else if (element.tags["golf"] === "green") {
                     greens.addData(geojson);
@@ -353,12 +406,6 @@
             if (!location) {
                 queryForGolfCourses([convertLocationToObjectWithBBox(e, 0.1)], courseName);
             }
-            var radius = e.accuracy;
-
-            L.marker(e.latlng).addTo(userLayer)
-                .bindPopup("You are within " + radius + " meters from this point").openPopup();
-
-            // L.circle(e.latlng, radius).addTo(userLayer);
         }
 
     </script>
