@@ -257,16 +257,8 @@
         function resetCourseSelect(selectObj) {
             // Clear all existing options
             selectObj.innerHTML = '';
-
-            // // Create a new default option
-            // const defaultOption = document.createElement('option');
-            // defaultOption.value = '';
-            // defaultOption.disabled = true;
-            // defaultOption.selected = true;
-            // defaultOption.textContent = 'Select a golf course';
-
-            // Append the default option to the select element
-            // selectObj.appendChild(defaultOption);
+            selectObj.style.display = 'none'; // Hides the select element
+            selectObj.disabled = true;        // Disables the select element
         }
 
         function postLookupProcessCourseSelect(selectObj) {
