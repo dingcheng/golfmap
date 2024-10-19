@@ -33,11 +33,12 @@
 
         /* Style each input and button to scale properly */
         .input-container input[type="text"],
+        .input-container select,
         .input-container button {
             width: 100%;
             padding: 10px;
             margin: 5px 0;
-            font-size: 16px;
+            font-size: 14px;
             border-radius: 5px;
             box-sizing: border-box;
         }
@@ -50,7 +51,7 @@
             font-size: 16px;
         }
 
-        .input-container button:hover {
+        .input-container button:hover select:hover {
             background-color: #0056b3;
         }
 
@@ -82,7 +83,8 @@
             }
 
             .input-container input[type="text"],
-            .input-container button {
+            button,
+            select {
                 padding: 8px;
                 font-size: 14px;
             }
@@ -122,9 +124,15 @@
 <body>
     <div class="container">
         <form id="controls" class="input-container" onsubmit="findGolfCourse(); return false;">
-            <input type="text" id="courseName" placeholder="Enter golf course name (or leave empty)"
-                value="China Creek">
-            <input type="text" id="location" placeholder="Enter city, zipcode, or use map view" value="98006">
+            <input type="text" id="location" placeholder="Enter city, zipcode, course name. Or empty for nearby.">
+            <select id="courseSelect" onchange="onSelectCourse()" disabled style="display: none;">
+                <option value="" disabled selected>Select a golf course</option>
+                <option value="China Creek">China Creek</option>
+                <option value="River Valley">River Valley</option>
+                <option value="Mountain View">Mountain View</option>
+                <!-- Add more options as needed -->
+            </select>
+            <input type="text" id="courseName" style="display: none;" disabled> <!-- Initially hidden -->
             <button type="submit">Go</button>
             <label class="track-me">
                 <input type="checkbox" id="trackMe"> Track Me
@@ -152,6 +160,8 @@
         const userLayer = L.layerGroup().addTo(map); // For user location markers
         const golfCourseLayer = L.layerGroup().addTo(map); // For golf course markers
         const yardageLayer = L.layerGroup().addTo(map); // For lines between current location and green marker
+        const courseSelect = document.getElementById('courseSelect');
+        let multiCourseLayerGroups = {};
 
         let userMarker; // Store the user marker
         let watchId;
@@ -193,7 +203,7 @@
             map.setView([latitude, longitude]); // Center the map on the user's location
         }
 
-        function calculateDistanceInYards(marker1, marker2) {
+        function calculateMarkerDistanceInYards(marker1, marker2) {
             // Get coordinates of the two markers
             let latlng1 = marker1.getLatLng();
             let latlng2 = marker2.getLatLng();
@@ -210,8 +220,8 @@
 
         function drawYardage() {
             if (focusGreenMarker && userMarker) {
-                const yardage = calculateDistanceInYards(focusGreenMarker, userMarker);
-                userMarker.getPopup().setContent(yardage + " yards");
+                const yardage = calculateMarkerDistanceInYards(focusGreenMarker, userMarker);
+                userMarker.getPopup().setContent(yardage.toFixed(0) + " yards");
                 yardageLayer.clearLayers();
                 L.polyline([userMarker.getLatLng(), focusGreenMarker.getLatLng()], {
                     color: 'red',   // Color of the line
@@ -234,6 +244,68 @@
             }
         });
 
+        function addOptionToSelect(selectObj, newOptionValue) {
+            // Create a new option element
+            const newOption = document.createElement('option');
+            newOption.value = newOptionValue; // Set the value
+            newOption.textContent = newOptionValue; // Set the display text
+
+            // Append the new option to the select element
+            selectObj.appendChild(newOption);
+        }
+
+        function resetCourseSelect(selectObj) {
+            // Clear all existing options
+            selectObj.innerHTML = '';
+
+            // Create a new default option
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.disabled = true;
+            defaultOption.selected = true;
+            defaultOption.textContent = 'Select a golf course';
+
+            // Append the default option to the select element
+            selectObj.appendChild(defaultOption);
+        }
+
+        function postLookupProcessCourseSelect(selectObj) {
+
+            // Check if the select element has only one option that is "Default"
+            if (selectObj.options.length === 1 && selectObj.options[0].textContent === 'Unnamed') {
+                // Hide and disable the select element
+                selectObj.style.display = 'none'; // Hides the select element
+                selectObj.disabled = true;        // Disables the select element
+            } else {
+                // Show and enable the select element
+                selectObj.style.display = 'block'; // Shows the select element
+                selectObj.disabled = false;        // Enables the select element
+            }
+        }
+
+        // Function to handle the selection event
+        function onSelectCourse() {
+            const courseSelect = document.getElementById('courseSelect');
+            const selectedCourse = courseSelect.value;
+
+            // Hide all sub LayerGroups
+            for (const key in multiCourseLayerGroups) {
+                if (multiCourseLayerGroups.hasOwnProperty(key)) {
+                    multiCourseLayerGroups[key].removeFrom(golfCourseLayer);
+                }
+            }
+
+            // Show the selected course's LayerGroup
+            if (multiCourseLayerGroups[selectedCourse]) {
+                multiCourseLayerGroups[selectedCourse].addTo(golfCourseLayer);
+                const bounds = multiCourseLayerGroups[selectedCourse].getBounds();
+                if (bounds.isValid()) {
+                    // Fit the map view to the bounds of the layer group
+                    map.fitBounds(bounds);
+                }
+            }
+        }
+
         //---
 
         async function findGolfCourse() {
@@ -241,6 +313,7 @@
             const location = document.getElementById("location").value;
             golfCourseLayer.clearLayers();
             yardageLayer.clearLayers();
+            resetCourseSelect(courseSelect);
             focusGreenMarker = null;
 
             if (location) {
@@ -264,6 +337,8 @@
                     weight: 1,          // Border weight
                     fillOpacity: 0      // No fill color
                 }).addTo(golfCourseLayer);
+
+                map.fitBounds(bbox);
 
                 // Construct Overpass API query
                 const queryString = courseName ?
@@ -290,25 +365,11 @@
             }
         }
 
-        function convertLocationToObjectWithBBox(position, bboxSize = 0.05) {
-
-            const lat = position.latitude;
-            const lng = position.longitude;
-
-            const locationWithBBox = {
-                bbox:
-                    L.latLngBounds(
-                        [lat - bboxSize, lng - bboxSize],
-                        [lat + bboxSize, lng + bboxSize]
-                    )
-            };
-
-            return locationWithBBox;
-        }
-
         function displayGolfCourse(data, bounds) {
             // Create a node lookup table from all nodes in the response
             const nodeLookup = {};
+            // Reset multi-course layergroup lookup so that i can look up layergroups by name
+            multiCourseLayerGroups = {};
             data.elements.forEach((element) => {
                 if (element.type === "node") {
                     nodeLookup[element.id] = [element.lon, element.lat];
@@ -316,7 +377,7 @@
             });
 
             // Display fetched data on the map
-            const fairways = L.geoJSON(null, { style: { color: "green" } }).addTo(golfCourseLayer);
+
             const greens = L.geoJSON(null, { style: { color: "darkgreen", fillOpacity: 0.4 } }).addTo(golfCourseLayer);
 
             // Array to hold all coordinates for bounding box calculation
@@ -324,12 +385,22 @@
 
             data.elements.forEach((element) => {
                 if (element.type === "node") return;
+                let holeCourseName = element.tags["golf:course:name"];
+                if (!holeCourseName) holeCourseName = 'Unnamed';
+                if (multiCourseLayerGroups[holeCourseName] == undefined) {
+                    multiCourseLayerGroups[holeCourseName] = L.featureGroup();
+                    multiCourseLayerGroups[holeCourseName].addTo(golfCourseLayer);
+                    addOptionToSelect(courseSelect, holeCourseName);
+                }
+                // console.log(multiCourseLayerGroups);
+                const fairways = L.geoJSON(null, { style: { color: "green" } }).addTo(multiCourseLayerGroups[holeCourseName]);
                 const geojson = toGeoJSON(element, nodeLookup);
                 if (element.tags["golf"] === "hole") {
                     fairways.addData(geojson);
                     // Add hole number overlay
                     const holeNumber = element.tags["ref"]; // Adjust based on the correct tag
                     const par = element.tags["par"]
+                    const holeYardage = calculateLineStringLengthInYards(geojson);
                     if (holeNumber) {
                         const midpoint = getMidpoint(geojson.geometry.coordinates);
                         const marker = L.marker(midpoint, {
@@ -338,7 +409,7 @@
                                 html: holeNumber,
                                 iconSize: [15, 15]
                             })
-                        }).bindPopup("Par " + par).addTo(golfCourseLayer);
+                        }).bindPopup("Par " + par + "<br>" + holeYardage.toFixed(0) + " yards").addTo(multiCourseLayerGroups[holeCourseName]);
                         marker.on('click', () => {
                             if (focusGreenMarker) {
                                 // reset previous marker
@@ -364,6 +435,8 @@
                 });
             });
 
+            postLookupProcessCourseSelect(courseSelect);
+
             // Calculate bounding box from all collected coordinates
             if (allCoordinates.length > 0) {
                 const bounds = L.latLngBounds(allCoordinates.map(coord => [coord[1], coord[0]]));
@@ -388,11 +461,37 @@
                             type: "LineString",
                             coordinates: coordinates
                         },
-                        properties: element.tags
+                        properties: element.tags,
                     };
                 }
             }
             return null; // Return null for unsupported types
+        }
+
+        /**
+         * Calculates the total length of a LineString GeoJSON object.
+         * 
+         * @param {Object} geoJsonLineString - A GeoJSON LineString feature.
+         * @returns {number} - The total length in meters.
+         */
+        function calculateLineStringLengthInYards(geoJsonLineString) {
+            // Ensure the GeoJSON is of type LineString
+            if (geoJsonLineString.type !== 'Feature' ||
+                geoJsonLineString.geometry.type !== 'LineString') {
+                throw new Error('Invalid GeoJSON object. Must be a LineString.');
+            }
+
+            let coordinates = geoJsonLineString.geometry.coordinates; // Get the coordinates
+            let totalDistance = 0;
+
+            // Loop through the coordinates to calculate the distance
+            for (let i = 0; i < coordinates.length - 1; i++) {
+                let point1 = L.latLng(coordinates[i][1], coordinates[i][0]); // Create LatLng for point1
+                let point2 = L.latLng(coordinates[i + 1][1], coordinates[i + 1][0]); // Create LatLng for point2
+                totalDistance += point1.distanceTo(point2); // Add distance between points
+            }
+
+            return totalDistance * 1.09361; // Total length in yard (multiplied from meters)
         }
 
         // Helper function to get the midpoint of a line
@@ -407,6 +506,23 @@
             if (!location) {
                 queryForGolfCourses([convertLocationToObjectWithBBox(e, 0.1)], courseName);
             }
+        }
+
+
+        function convertLocationToObjectWithBBox(position, bboxSize = 0.05) {
+
+            const lat = position.latitude;
+            const lng = position.longitude;
+
+            const locationWithBBox = {
+                bbox:
+                    L.latLngBounds(
+                        [lat - bboxSize, lng - bboxSize],
+                        [lat + bboxSize, lng + bboxSize]
+                    )
+            };
+
+            return locationWithBBox;
         }
 
     </script>
