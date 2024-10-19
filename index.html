@@ -60,6 +60,18 @@
             /* Allows the map to take up the remaining space */
         }
 
+        .track-me {
+            display: flex;
+            align-items: center;
+            margin-left: 10px;
+            /* Adds space between the button and the checkbox */
+        }
+
+        .track-me input[type="checkbox"] {
+            margin-right: 5px;
+            /* Adds space between the checkbox and the label text */
+        }
+
         /* Responsive adjustments for small screens */
         @media (max-width: 1200px) {
             .input-container {
@@ -73,6 +85,13 @@
             .input-container button {
                 padding: 8px;
                 font-size: 14px;
+            }
+
+            .track-me {
+                margin-left: 0;
+                /* Reset margin on smaller screens */
+                justify-content: center;
+                /* Center the checkbox on smaller screens */
             }
         }
 
@@ -103,6 +122,9 @@
                 value="China Creek">
             <input type="text" id="location" placeholder="Enter city, zipcode, or use map view" value="98006">
             <button type="submit">Go</button>
+            <label class="track-me">
+                <input type="checkbox" id="trackMe"> Track Me
+            </label>
         </form>
         <div id="map"></div>
     </div>
@@ -122,13 +144,65 @@
         // Initialize geocoder for location input
         const geocoder = L.Control.Geocoder.nominatim();
 
+        // Create separate layer groups
+        const userLayer = L.layerGroup().addTo(map); // For user location markers
+        const golfCourseLayer = L.layerGroup().addTo(map); // For golf course markers
+
+        let userMarker; // Store the user marker
+        let watchId;
+
+        //--- watch/track user location component
+
+        function startTracking() {
+            if (navigator.geolocation) {
+                watchId = navigator.geolocation.watchPosition(updatePosition, handleError, {
+                    enableHighAccuracy: true
+                });
+            } else {
+                alert("Geolocation is not supported by this browser.");
+            }
+        }
+
+        function stopTracking() {
+            if (navigator.geolocation && watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                userLayer.clearLayers();
+                userMarker = null;
+            }
+        }
+
+        function updatePosition(position) {
+            const latitude = position.coords.latitude;
+            const longitude = position.coords.longitude;
+
+            // Update the map with the user's location marker
+            if (!userMarker) {
+                userMarker = L.marker([latitude, longitude]).addTo(userLayer)
+                    .bindPopup("You are here").openPopup();
+            } else {
+                userMarker.setLatLng([latitude, longitude]);
+            }
+            map.setView([latitude, longitude]); // Center the map on the user's location
+        }
+
+        function handleError(error) {
+            console.error(`Error occurred: ${error.message}`);
+        }
+
+        document.getElementById("trackMe").addEventListener("change", function () {
+            if (this.checked) {
+                startTracking();
+            } else {
+                stopTracking();
+            }
+        });
+
+        //---
+
         async function findGolfCourse() {
             const courseName = document.getElementById("courseName").value;
             const location = document.getElementById("location").value;
-            // Clear previous layers
-            map.eachLayer((layer) => {
-                if (!!layer.toGeoJSON) map.removeLayer(layer);
-            });
+            golfCourseLayer.clearLayers();
 
             map.locate();
             if (location) {
@@ -149,7 +223,7 @@
                     color: "#ff7800",   // Border color
                     weight: 1,          // Border weight
                     fillOpacity: 0      // No fill color
-                }).addTo(map);
+                }).addTo(golfCourseLayer);
 
                 // Construct Overpass API query
                 const queryString = courseName ?
@@ -202,8 +276,8 @@
             });
 
             // Display fetched data on the map
-            const fairways = L.geoJSON(null, { style: { color: "green" } }).addTo(map);
-            const greens = L.geoJSON(null, { style: { color: "darkgreen", fillOpacity: 0.4 } }).addTo(map);
+            const fairways = L.geoJSON(null, { style: { color: "green" } }).addTo(golfCourseLayer);
+            const greens = L.geoJSON(null, { style: { color: "darkgreen", fillOpacity: 0.4 } }).addTo(golfCourseLayer);
 
             // Array to hold all coordinates for bounding box calculation
             const allCoordinates = [];
@@ -224,7 +298,7 @@
                                 html: holeNumber,
                                 iconSize: [15, 15]
                             })
-                        }).bindPopup("Par " + par).addTo(map);
+                        }).bindPopup("Par " + par).addTo(golfCourseLayer);
                     }
                 } else if (element.tags["golf"] === "green") {
                     greens.addData(geojson);
@@ -274,7 +348,6 @@
         }
 
         function onLocationFound(e) {
-            // console.log("location found!", e);
             const location = document.getElementById("location").value;
             const courseName = document.getElementById("courseName").value;
             if (!location) {
@@ -282,10 +355,10 @@
             }
             var radius = e.accuracy;
 
-            L.marker(e.latlng).addTo(map)
+            L.marker(e.latlng).addTo(userLayer)
                 .bindPopup("You are within " + radius + " meters from this point").openPopup();
 
-            L.circle(e.latlng, radius).addTo(map);
+            // L.circle(e.latlng, radius).addTo(userLayer);
         }
 
     </script>
