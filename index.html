@@ -148,10 +148,28 @@
         // Initialize map
         const map = L.map('map').setView([47.6104, -122.2007], 13);
         map.on('locationfound', onLocationFound);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        // Create street layer from OSM
+        const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 18,
             tileSize: 256
-        }).addTo(map);
+        });
+
+        // Add Esri satellite layer
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 18,
+            tileSize: 256
+        });
+
+        baseMaps = {
+            "Street View": streetLayer,
+            "Satellite View": satelliteLayer
+        };
+
+        L.control.layers(baseMaps).addTo(map);
+
+        // Set the default layer
+        streetLayer.addTo(map);
+
 
         // Initialize geocoder for location input
         const geocoder = L.Control.Geocoder.nominatim();
