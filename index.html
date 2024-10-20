@@ -100,7 +100,7 @@
 
 
         .hole-number {
-            background-color: yellow;
+            background-color: lightyellow;
             /* Change background color for visibility */
             border: 2px solid green;
             /* Make the border more pronounced */
@@ -110,7 +110,7 @@
             text-align: center;
             font-size: 14px;
             /* Adjust font size */
-            color: black;
+            color: brown;
             /* Ensure text is dark */
         }
 
@@ -396,7 +396,7 @@
 
             // Display fetched data on the map
 
-            const greens = L.geoJSON(null, { style: { color: "darkgreen", fillOpacity: 0.4 } }).addTo(golfCourseLayer);
+            // const greens = L.geoJSON(null, { style: { color: "darkgreen", fillOpacity: 0.4 } }).addTo(golfCourseLayer);
 
             // Array to hold all coordinates for bounding box calculation
             const allCoordinates = [];
@@ -411,7 +411,7 @@
                     addOptionToSelect(courseSelect, holeCourseName);
                 }
                 // console.log(multiCourseLayerGroups);
-                const fairways = L.geoJSON(null, { style: { color: "green" } }).addTo(multiCourseLayerGroups[holeCourseName]);
+                const fairways = L.geoJSON(null, { style: { color: "DeepSkyBlue" } }).addTo(multiCourseLayerGroups[holeCourseName]);
                 const geojson = toGeoJSON(element, nodeLookup);
                 if (element.tags["golf"] === "hole") {
                     fairways.addData(geojson);
