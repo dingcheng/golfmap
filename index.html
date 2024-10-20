@@ -117,6 +117,19 @@
         .hole-number-current {
             background-color: aquamarine;
         }
+
+        .red-dot {
+            background-color: red;
+            /* Set background color to red */
+            border-radius: 50%;
+            /* Make it circular */
+            width: 12px;
+            /* Set the width of the dot */
+            height: 12px;
+            /* Set the height of the dot */
+            border: 2px solid white;
+            /* Optional: Add a white border for contrast */
+        }
     </style>
 </head>
 
@@ -154,6 +167,7 @@
         // Initialize map
         const map = L.map('map').setView([47.6104, -122.2007], 13);
         map.on('locationfound', onLocationFound);
+        map.on('click', onMapClick);
         // Create street layer from OSM
         const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 18,
@@ -190,6 +204,7 @@
         let userMarker; // Store the user marker
         let watchId;
         let focusGreenMarker;
+        let customMarker;
         let locationViewSet = false;
 
         //--- watch/track user location component
@@ -223,12 +238,12 @@
             // Update the map with the user's location marker
             if (!userMarker) {
                 userMarker = L.marker([latitude, longitude]).addTo(userLayer)
-                    .bindTooltip("You are here", {permanent: true, closeOnClick: false}).openTooltip();
+                    .bindTooltip("You are here").openTooltip();
             } else {
                 userMarker.setLatLng([latitude, longitude]);
                 drawYardage();
             }
-            if(!locationViewSet) {
+            if (!locationViewSet) {
                 map.setView([latitude, longitude]); // Center the map on the user's location
                 locationViewSet = true;
             }
@@ -255,15 +270,56 @@
 
         function drawYardage() {
             if (focusGreenMarker && userMarker) {
-                const yardage = calculateMarkerDistanceInYards(focusGreenMarker, userMarker);
-                userMarker.getTooltip().setContent(yardage.toFixed(0) + " yards");
                 yardageLayer.clearLayers();
-                L.polyline([userMarker.getLatLng(), focusGreenMarker.getLatLng()], {
-                    color: 'red',   // Color of the line
-                    weight: 1,      // Thickness of the line
-                    opacity: 0.7,   // Transparency of the line
-                }).addTo(yardageLayer);
+                if (customMarker) {
+                    let yard1 = calculateMarkerDistanceInYards(userMarker, customMarker);
+                    let yardageLine1 = L.polyline([userMarker.getLatLng(), customMarker.getLatLng()], {
+                        color: 'red',   // Color of the line
+                        weight: 1,      // Thickness of the line
+                        opacity: 0.7,   // Transparency of the line
+                    });
+                    yardageLine1.addTo(yardageLayer);
+                    yardageLine1.bindTooltip(yard1.toFixed(0) + " yards", { permanent: true, closeOnClick: false });
+
+                    let yard2 = calculateMarkerDistanceInYards(customMarker, focusGreenMarker);
+                    let yardageLine2 = L.polyline([focusGreenMarker.getLatLng(), customMarker.getLatLng()], {
+                        color: 'red',   // Color of the line
+                        weight: 1,      // Thickness of the line
+                        opacity: 0.7,   // Transparency of the line
+                    });
+                    yardageLine2.addTo(yardageLayer);
+                    yardageLine2.bindTooltip(yard2.toFixed(0) + " yards", { permanent: true, closeOnClick: false });
+                }
+                else {
+                    yardageLine = L.polyline([userMarker.getLatLng(), focusGreenMarker.getLatLng()], {
+                        color: 'red',   // Color of the line
+                        weight: 1,      // Thickness of the line
+                        opacity: 0.7,   // Transparency of the line
+                    });
+                    const yardage = calculateMarkerDistanceInYards(focusGreenMarker, userMarker);
+                    yardageLine.addTo(yardageLayer);
+                    yardageLine.bindTooltip(yardage.toFixed(0) + " yards", { permanent: true, closeOnClick: false });
+                }
             }
+        }
+
+        function onMapClick(clickedPosition) {
+            const latlng = clickedPosition.latlng; // Get the clicked location
+
+            // Create a draggable marker at the clicked location
+            if (customMarker) customMarker.remove();
+            customMarker = L.marker(latlng, {
+                draggable: true, // Make the marker draggable
+                icon: L.divIcon({
+                    className: 'red-dot',
+                    iconSize: [12, 12]
+                })
+            }).addTo(userLayer);
+
+            drawYardage();
+
+            // Optional: Log the new marker's position after it's dragged
+            customMarker.on('drag', drawYardage);
         }
 
         document.getElementById("trackMe").addEventListener("change", function () {
@@ -433,6 +489,10 @@
                             })
                         }).bindTooltip("Par " + par + "<br>" + holeYardage.toFixed(0) + " yards").addTo(multiCourseLayerGroups[holeCourseName]);
                         marker.on('click', () => {
+                            if (customMarker) {
+                                customMarker.remove();
+                                customMarker = null;
+                            }
                             if (focusGreenMarker) {
                                 // reset previous marker
                                 let currentIcon = focusGreenMarker.getIcon();
