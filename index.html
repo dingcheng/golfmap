@@ -223,7 +223,7 @@
             // Update the map with the user's location marker
             if (!userMarker) {
                 userMarker = L.marker([latitude, longitude]).addTo(userLayer)
-                    .bindPopup("You are here").openPopup();
+                    .bindTooltip("You are here", {permanent: true, closeOnClick: false}).openPopup();
             } else {
                 userMarker.setLatLng([latitude, longitude]);
                 drawYardage();
@@ -256,14 +256,13 @@
         function drawYardage() {
             if (focusGreenMarker && userMarker) {
                 const yardage = calculateMarkerDistanceInYards(focusGreenMarker, userMarker);
-                userMarker.getPopup().setContent(yardage.toFixed(0) + " yards");
+                userMarker.getTooltip().setContent(yardage.toFixed(0) + " yards");
                 yardageLayer.clearLayers();
                 L.polyline([userMarker.getLatLng(), focusGreenMarker.getLatLng()], {
                     color: 'red',   // Color of the line
                     weight: 1,      // Thickness of the line
                     opacity: 0.7,   // Transparency of the line
                 }).addTo(yardageLayer);
-                userMarker.openPopup();
             }
         }
 
