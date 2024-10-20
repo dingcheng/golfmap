@@ -223,7 +223,7 @@
             // Update the map with the user's location marker
             if (!userMarker) {
                 userMarker = L.marker([latitude, longitude]).addTo(userLayer)
-                    .bindTooltip("You are here", {permanent: true, closeOnClick: false}).openPopup();
+                    .bindTooltip("You are here", {permanent: true, closeOnClick: false}).openTooltip();
             } else {
                 userMarker.setLatLng([latitude, longitude]);
                 drawYardage();
@@ -431,7 +431,7 @@
                                 html: holeNumber,
                                 iconSize: [15, 15]
                             })
-                        }).bindPopup("Par " + par + "<br>" + holeYardage.toFixed(0) + " yards").addTo(multiCourseLayerGroups[holeCourseName]);
+                        }).bindTooltip("Par " + par + "<br>" + holeYardage.toFixed(0) + " yards").addTo(multiCourseLayerGroups[holeCourseName]);
                         marker.on('click', () => {
                             if (focusGreenMarker) {
                                 // reset previous marker
