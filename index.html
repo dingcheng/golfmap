@@ -32,29 +32,43 @@
             box-sizing: border-box;
         }
 
-        /* Style each input and button to scale properly */
-        .input-container input[type="text"],
-        .input-container select,
-        .input-container button {
+        .input-with-button {
+            position: relative;
+            flex-grow: 1;
+            /* Make input box take up available space */
+        }
+
+        .input-with-button input[type="text"] {
             width: 100%;
-            padding: 10px;
-            margin: 5px 0;
-            font-size: 14px;
-            border-radius: 5px;
+            padding-right: 50px;
+            /* Add space for the button inside the input */
             box-sizing: border-box;
         }
 
-        .input-container button {
-            background-color: #007bff;
-            color: white;
+        .input-button {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 50px;
             border: none;
+            background-color: #007bff;
+            /* Button background color (you can adjust) */
+            color: white;
+            /* Button text color */
             cursor: pointer;
-            font-size: 16px;
+            padding: 0;
+            margin: 0;
+            text-align: center;
+            border-radius: 0 4px 4px 0;
+            /* Match input box rounded corners */
         }
 
-        .input-container button:hover select:hover {
+        .input-button:hover {
             background-color: #0056b3;
+            /* Hover effect for the button */
         }
+
 
         /* Make the map fill remaining space */
         #map {
@@ -79,15 +93,29 @@
             .input-container {
                 display: flex;
                 flex-direction: column;
-                max-width: 90%;
+                align-items: center;
+                /* Center the elements */
+                width: 90%;
+                /* Make the input container span 90% of the screen width */
+                margin: 0 auto;
+                /* Center the container horizontally */
                 padding: 5px;
             }
 
+            .input-with-button {
+                width: 100%;
+            }
             .input-container input[type="text"],
             button,
             select {
+                width: 100%;
+                /* Make input, button, and select span full width of the container */
+                box-sizing: border-box;
+                /* Ensure padding is included in the width calculation */
                 padding: 8px;
                 font-size: 14px;
+                height: 40px;
+                vertical-align: middle;
             }
 
             .track-me {
@@ -143,7 +171,11 @@
 <body>
     <div class="container">
         <form id="controls" class="input-container" onsubmit="findGolfCourse(); return false;">
-            <input type="text" id="location" placeholder="Enter city, zipcode, course name. Or empty for nearby.">
+            <div class="input-with-button">
+                <input type="text" id="location" placeholder="Course name or location (empty for nearby)"
+                    onfocus="this.select()">
+                <button type="submit" class="input-button">Go</button> <!-- Button inside the input box -->
+            </div>
             <select id="courseSelect" onchange="onSelectCourse()" disabled style="display: none;">
                 <option value="" disabled selected>Select a golf course</option>
                 <option value="China Creek">China Creek</option>
@@ -152,7 +184,7 @@
                 <!-- Add more options as needed -->
             </select>
             <input type="text" id="courseName" style="display: none;" disabled> <!-- Initially hidden -->
-            <button type="submit">Go</button>
+            <!-- <button type="submit">Go</button> -->
             <label class="track-me">
                 <input type="checkbox" id="trackMe"> Track Me
             </label>
