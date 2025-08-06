@@ -5,7 +5,6 @@
     <meta charset="UTF-8">
     <title>Golf Course Mapper</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
     <style>
         html,
         body {
@@ -194,7 +193,6 @@
 
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
     <script>
         // Initialize map
         const map = L.map('map').setView([47.6104, -122.2007], 13);
@@ -223,8 +221,40 @@
         streetLayer.addTo(map);
 
 
-        // Initialize geocoder for location input
-        const geocoder = L.Control.Geocoder.nominatim();
+
+
+
+
+        // Direct geocoding function using Nominatim API
+        async function geocodeLocation(location) {
+            try {
+                console.log("Geocoding location:", location);
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)}&limit=1&addressdetails=1`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log("Geocoding results:", data);
+                
+                if (data && data.length > 0) {
+                    const result = data[0];
+                    const bbox = L.latLngBounds(
+                        [parseFloat(result.boundingbox[0]), parseFloat(result.boundingbox[2])],
+                        [parseFloat(result.boundingbox[1]), parseFloat(result.boundingbox[3])]
+                    );
+                    return [{
+                        bbox: bbox,
+                        center: L.latLng(parseFloat(result.lat), parseFloat(result.lon))
+                    }];
+                }
+                return [];
+            } catch (error) {
+                console.error("Geocoding error:", error);
+                return [];
+            }
+        }
 
         // Create separate layer groups
         const userLayer = L.layerGroup().addTo(map); // For user location markers
@@ -428,14 +458,24 @@
             focusGreenMarker = null;
 
             if (location) {
-                // Use geocoding to convert location input into bounding box
-                await geocoder.geocode(location, (results) => queryForGolfCourses(results, courseName));
+                try {
+                    const results = await geocodeLocation(location);
+                    if (results && results.length > 0) {
+                        queryForGolfCourses(results, courseName);
+                    } else {
+                        alert("Location not found. Please try a different search term.");
+                    }
+                } catch (error) {
+                    console.error("Geocoding error:", error);
+                    alert("Error in geocoding. Please try again.");
+                }
             } else {
                 map.locate();
             }
         }
 
         function queryForGolfCourses(results, courseName) {
+            console.log("queryForGolfCourses called with results:", results, "courseName:", courseName);
             if (results.length > 0) {
                 const bbox = results[0].bbox;
                 const south = bbox.getSouthWest().lat;
